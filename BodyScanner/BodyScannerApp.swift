@@ -17,30 +17,6 @@ struct BodyScannerApp: App {
     }
 }
 
-
-final class BGWebView: WKWebView, WKUIDelegate {
-    override init(frame: CGRect, configuration: WKWebViewConfiguration) {
-        super.init(frame: frame, configuration: configuration)
-        self.uiDelegate = self // need to set this delaget in order to access to motion sensor.
-    }
-    
-    required init?(coder: NSCoder) {
-        fatalError("init(coder): has not been implemented")
-    }
-}
-
-final class BGWebViewConfiguration: WKWebViewConfiguration {
-  override init() {
-    super.init()
-    self.allowsInlineMediaPlayback = true // need to set this to be able to show the camera
-  }
-  
-  required init?(coder: NSCoder) {
-    fatalError("init(coder:) has not been implemented")
-  }
-}
-
-
 struct ScannerView: UIViewRepresentable {
         
     func makeCoordinator() -> Coordinator {
@@ -48,15 +24,21 @@ struct ScannerView: UIViewRepresentable {
     }
     
     func makeUIView(context: Context) -> WKWebView {
-        let configuration = BGWebViewConfiguration()
+        // Configuration.
+        let configuration = WKWebViewConfiguration()
+        configuration.allowsInlineMediaPlayback = true
         configuration.userContentController.add(context.coordinator, name: "BGScanflowJSWebviewInterface")
-        let webview = BGWebView(frame: .zero, configuration: configuration)
+        
+        // Webview
+        let webview = WKWebView(frame: .zero, configuration: configuration)
         webview.navigationDelegate = context.coordinator
+        webview.uiDelegate = context.coordinator
+        
         return webview
     }
 
     func updateUIView(_ uiView: WKWebView, context: Context) {
-        let url = URL(string: "https://platform.bodygram.com/%7Borg_id%7D/scan?token={token}&screens=scan") // <- Update URL.
+        let url = URL(string: "https://platform.bodygram.com/org_id/scan?token=token&screens=scan") // <- Update URL.
         let request = URLRequest(url: url!)
         uiView.load(request)
     }
@@ -65,7 +47,7 @@ struct ScannerView: UIViewRepresentable {
         print(message)
     }
     
-    class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
+    class Coordinator: NSObject,WKUIDelegate, WKNavigationDelegate, WKScriptMessageHandler {
         let parent: ScannerView
         
         init(_ webView: ScannerView) {
@@ -75,6 +57,11 @@ struct ScannerView: UIViewRepresentable {
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             let script = "window.BGScanflowJSWebviewInterface = (type, payload) => window.webkit.messageHandlers.BGScanflowJSWebviewInterface.postMessage({ type, payload })"
             webView.evaluateJavaScript(script, completionHandler: nil)
+        }
+        
+        @available(iOS 15.0, *)
+        func webView(_ webView: WKWebView, requestMediaCapturePermissionFor origin: WKSecurityOrigin, initiatedByFrame frame: WKFrameInfo, type: WKMediaCaptureType, decisionHandler: @escaping (WKPermissionDecision) -> Void) {
+            decisionHandler(.grant)
         }
         
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
