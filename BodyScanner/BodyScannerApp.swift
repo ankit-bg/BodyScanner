@@ -47,7 +47,7 @@ struct ScannerView: UIViewRepresentable {
         print(message)
     }
     
-    class Coordinator: NSObject,WKUIDelegate, WKNavigationDelegate, WKScriptMessageHandler {
+    class Coordinator: NSObject, WKUIDelegate, WKNavigationDelegate, WKScriptMessageHandler {
         let parent: ScannerView
         
         init(_ webView: ScannerView) {
