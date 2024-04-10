@@ -7,6 +7,7 @@
 
 import SwiftUI
 import WebKit
+import AVFoundation
 
 @main
 struct BodyScannerApp: App {
@@ -17,55 +18,42 @@ struct BodyScannerApp: App {
     }
 }
 
-
-final class BGWebView: WKWebView, WKUIDelegate {
-    override init(frame: CGRect, configuration: WKWebViewConfiguration) {
-        super.init(frame: frame, configuration: configuration)
-        self.uiDelegate = self // need to set this delaget in order to access to motion sensor.
-    }
-    
-    required init?(coder: NSCoder) {
-        fatalError("init(coder): has not been implemented")
-    }
-}
-
-final class BGWebViewConfiguration: WKWebViewConfiguration {
-  override init() {
-    super.init()
-    self.allowsInlineMediaPlayback = true // need to set this to be able to show the camera
-  }
-  
-  required init?(coder: NSCoder) {
-    fatalError("init(coder:) has not been implemented")
-  }
-}
-
-
 struct ScannerView: UIViewRepresentable {
+    @State private var cameraPermissionGranted = false
         
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
     
     func makeUIView(context: Context) -> WKWebView {
-        let configuration = BGWebViewConfiguration()
-        configuration.userContentController.add(context.coordinator, name: "BGScanflowJSWebviewInterface")
-        let webview = BGWebView(frame: .zero, configuration: configuration)
+        let webview = WKWebView()
+        webview.configuration.allowsInlineMediaPlayback = true
+        webview.configuration.userContentController.add(context.coordinator, name: "BGScanflowJSWebviewInterface")
         webview.navigationDelegate = context.coordinator
+        webview.uiDelegate = context.coordinator
         return webview
     }
 
     func updateUIView(_ uiView: WKWebView, context: Context) {
-        let url = URL(string: "https://platform.bodygram.com/%7Borg_id%7D/scan?token={token}&screens=scan") // <- Update URL.
-        let request = URLRequest(url: url!)
-        uiView.load(request)
+        if let url = URL(string: "https://platform.bodygram.com/org_id/scan?token=token&screens=scan") {
+            let request = URLRequest(url: url)
+            uiView.load(request)
+        }
+    }
+
+    private func requestCameraPermission() {
+        AVCaptureDevice.requestAccess(for: .video) { [self] granted in
+            DispatchQueue.main.async {
+                self.cameraPermissionGranted = granted
+            }
+        }
     }
     
     func onMessageReceived(_ message: [String: String]) {
         print(message)
     }
     
-    class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
+    class Coordinator: NSObject, WKUIDelegate, WKNavigationDelegate, WKScriptMessageHandler {
         let parent: ScannerView
         
         init(_ webView: ScannerView) {
@@ -75,7 +63,23 @@ struct ScannerView: UIViewRepresentable {
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             let script = "window.BGScanflowJSWebviewInterface = (type, payload) => window.webkit.messageHandlers.BGScanflowJSWebviewInterface.postMessage({ type, payload })"
             webView.evaluateJavaScript(script, completionHandler: nil)
+            
+            
         }
+        
+        func webView(_ webView: WKWebView, decidePolicyFor navigationAction: WKNavigationAction, preferences: WKWebpagePreferences, decisionHandler: @escaping (WKNavigationActionPolicy, WKWebpagePreferences) -> Void) {
+            if navigationAction.request.url?.scheme == "https" {
+                // Handle navigation requests here if necessary
+                decisionHandler(.allow, preferences)
+            } else {
+                decisionHandler(.cancel, preferences)
+            }
+        }
+        
+//        @available(iOS 15.0, *)
+//        func webView(_ webView: WKWebView, requestMediaCapturePermissionFor origin: WKSecurityOrigin, initiatedByFrame frame: WKFrameInfo, type: WKMediaCaptureType, decisionHandler: @escaping (WKPermissionDecision) -> Void) {
+//            decisionHandler(.grant)
+//        }
         
         func userContentController(_ userContentController: WKUserContentController, didReceive message: WKScriptMessage) {
             // Handle messages received from JavaScript
