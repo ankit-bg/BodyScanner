@@ -38,6 +38,9 @@ struct ScannerView: UIViewRepresentable {
     }
 
     func updateUIView(_ uiView: WKWebView, context: Context) {
+        /**
+         Visit https://platform.bodygram.com/docs/tutorials/bodygram-scanner/ to learn more.
+         */
         let url = URL(string: "https://platform.bodygram.com/org_id/scan?token=token&screens=scan") // <- Update URL.
         let request = URLRequest(url: url!)
         uiView.load(request)
