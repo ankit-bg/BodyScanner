@@ -24,7 +24,7 @@ open BodyScanner.xcodeproj
 
 #### Step 3. Update the URL.
 
-Ensure to replace the placeholder URL ([here](https://github.com/ankit-bg/BodyScanner/blob/main/BodyScanner/BodyScannerApp.swift#L59)) with the correct one here to ensure proper functioning of the app. 
+Ensure to replace the placeholder URL ([here](https://github.com/ankit-bg/BodyScanner/blob/main/BodyScanner/BodyScannerApp.swift#L44)) with the correct one here to ensure proper functioning of the app. To learn more visit [here](https://platform.bodygram.com/docs/tutorials/bodygram-scanner/).
 
 #### Step 4. Run the project
 
